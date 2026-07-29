@@ -1,0 +1,36 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // --- avatars/{uid}.{ext} ---
+    // Publicly readable (shown across the app), writable only by the
+    // owning user. Storage rules can't reference a document's own
+    // filename against a Firestore role lookup, so ownership is
+    // enforced via the filename-matches-uid convention used by
+    // storageService.buildAvatarPath().
+    match /avatars/{fileName} {
+      allow read: if true;
+      allow write: if request.auth != null &&
+        fileName.matches(request.auth.uid + '\\..*') &&
+        request.resource.size < 5 * 1024 * 1024 &&
+        request.resource.contentType.matches('image/.*');
+    }
+
+    // --- tournamentBanners/{tournamentId}.{ext} ---
+    // Publicly readable. Write access is restricted to admins via the
+    // "role" custom claim, which the Phase 6B syncAdminClaim Cloud
+    // Function keeps mirrored from users/{uid}.role — Storage rules
+    // can't read Firestore directly, but they CAN read auth token
+    // claims, which is exactly what this trigger exists to provide.
+    // Note: a freshly-promoted admin must get a new ID token (sign out
+    // and back in, or call getIdToken(true)) before this takes effect.
+    match /tournamentBanners/{fileName} {
+      allow read: if true;
+      allow write: if request.auth != null &&
+        request.auth.token.role == 'admin' &&
+        request.resource.size < 5 * 1024 * 1024 &&
+        request.resource.contentType.matches('image/.*');
+    }
+  }
+}

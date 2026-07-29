@@ -1,0 +1,3 @@
+rootProject.name = 'FF MAX ARENA'
+include ':app'
+apply from: file("capacitor.settings.gradle")

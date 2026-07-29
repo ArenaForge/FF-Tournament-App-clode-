@@ -1,0 +1,177 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    @apply bg-void text-ink font-body antialiased;
+    background-image: radial-gradient(circle at 20% 20%, rgba(0, 229, 199, 0.06), transparent 40%),
+      radial-gradient(circle at 80% 80%, rgba(255, 176, 32, 0.05), transparent 40%);
+  }
+
+  ::selection {
+    @apply bg-cyan/30 text-ink;
+  }
+
+  /* Visible keyboard focus everywhere, no exceptions */
+  :focus-visible {
+    outline: 2px solid theme("colors.cyan.DEFAULT");
+    outline-offset: 2px;
+  }
+}
+
+@layer components {
+  /* Signature "targeting" input: laser-line focus indicator */
+  .field-input {
+    @apply w-full bg-panel-raised border border-line rounded-md px-4 py-3 text-ink placeholder:text-ink-muted
+      transition-colors duration-200 outline-none;
+  }
+  .field-input:focus {
+    @apply border-cyan;
+    box-shadow: 0 0 0 1px theme("colors.cyan.DEFAULT"), 0 0 16px rgba(0, 229, 199, 0.2);
+  }
+  .field-input.field-error {
+    @apply border-danger;
+    box-shadow: 0 0 0 1px theme("colors.danger");
+  }
+
+  /* Signature "DEPLOY" button: angled corners + scanline sweep on hover */
+  .btn-deploy {
+    @apply relative overflow-hidden w-full font-display font-bold tracking-wider text-void
+      bg-cyan py-3 px-6 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed;
+    clip-path: polygon(3% 0, 100% 0, 97% 100%, 0 100%);
+  }
+  .btn-deploy:hover:not(:disabled) {
+    @apply shadow-glow;
+    filter: brightness(1.08);
+  }
+  .btn-deploy::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      110deg,
+      transparent 20%,
+      rgba(255, 255, 255, 0.35) 50%,
+      transparent 80%
+    );
+    transform: translateX(-100%);
+  }
+  .btn-deploy:hover:not(:disabled)::after {
+    animation: scanline 1s ease-in-out;
+  }
+
+  .btn-ghost {
+    @apply w-full font-display font-semibold tracking-wide text-cyan border border-cyan/40
+      py-3 px-6 rounded-md hover:bg-cyan/10 transition-colors duration-200;
+  }
+
+  .label-tag {
+    @apply font-mono text-xs uppercase tracking-[0.2em] text-ink-muted;
+  }
+
+  .link-amber {
+    @apply text-amber hover:text-amber/80 transition-colors underline-offset-4 hover:underline;
+  }
+
+  /* ---------- Phase 2: main app UI (black + orange, glassmorphism) ---------- */
+
+  .glass-card {
+    @apply relative rounded-2xl border border-white/10 shadow-glass;
+    background: rgba(255, 255, 255, 0.045);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+  }
+
+  .glass-panel {
+    @apply rounded-2xl border border-white/10 shadow-glass;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02));
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+  }
+
+  .chip {
+    @apply inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold font-mono
+      uppercase tracking-wide border;
+  }
+  .chip-orange {
+    @apply chip text-orange border-orange/40 bg-orange/10;
+  }
+  .chip-muted {
+    @apply chip text-ink-muted border-white/10 bg-white/5;
+  }
+  .chip-success {
+    @apply chip text-success border-success/40 bg-success/10;
+  }
+  .chip-danger {
+    @apply chip text-danger border-danger/40 bg-danger/10;
+  }
+
+  .btn-orange {
+    @apply w-full font-display font-bold tracking-wide text-void bg-gradient-to-r from-orange to-orange-soft
+      py-3 px-6 rounded-xl transition-all duration-200 active:scale-[0.98] disabled:opacity-50;
+  }
+  .btn-orange:hover:not(:disabled) {
+    @apply shadow-glow-orange;
+    filter: brightness(1.06);
+  }
+
+  .btn-outline-orange {
+    @apply w-full font-display font-semibold tracking-wide text-orange border border-orange/40
+      py-3 px-6 rounded-xl hover:bg-orange/10 transition-colors duration-200;
+  }
+
+  .icon-btn {
+    @apply flex items-center justify-center w-10 h-10 rounded-full border border-white/10
+      bg-white/5 text-ink hover:bg-white/10 transition-colors duration-200;
+  }
+
+  /* Bottom navigation */
+  .bottom-nav {
+    @apply fixed bottom-0 left-0 right-0 z-40 border-t border-white/10;
+    background: rgba(10, 13, 18, 0.85);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .nav-item {
+    @apply relative flex flex-col items-center justify-center gap-1 flex-1 py-2.5 text-ink-muted
+      transition-colors duration-200;
+  }
+  .nav-item.active {
+    @apply text-orange;
+  }
+  .nav-item .nav-dot {
+    @apply absolute -top-0.5 w-1 h-1 rounded-full bg-orange opacity-0 transition-opacity duration-200;
+  }
+  .nav-item.active .nav-dot {
+    @apply opacity-100;
+  }
+
+  .page-shell {
+    @apply min-h-screen bg-void pb-28;
+  }
+
+  .top-bar {
+    @apply sticky top-0 z-30 flex items-center justify-between px-5 py-4;
+    background: linear-gradient(180deg, rgba(10, 13, 18, 0.95), rgba(10, 13, 18, 0.7));
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+  }
+}
+
+@layer utilities {
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}

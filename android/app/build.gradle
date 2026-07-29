@@ -1,0 +1,96 @@
+apply plugin: 'com.android.application'
+
+def keystorePropertiesFile = rootProject.file('keystore.properties')
+def keystoreProperties = new Properties()
+def hasKeystoreFile = keystorePropertiesFile.exists()
+if (hasKeystoreFile) {
+    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+}
+
+// CI (e.g. GitHub Actions) provides these as environment variables
+// instead of a checked-in properties file — see
+// .github/workflows/android-release.yml
+def ksStorePath = hasKeystoreFile ? keystoreProperties['storeFile'] : System.getenv('ANDROID_KEYSTORE_PATH')
+def ksStorePassword = hasKeystoreFile ? keystoreProperties['storePassword'] : System.getenv('ANDROID_KEYSTORE_PASSWORD')
+def ksKeyAlias = hasKeystoreFile ? keystoreProperties['keyAlias'] : System.getenv('ANDROID_KEY_ALIAS')
+def ksKeyPassword = hasKeystoreFile ? keystoreProperties['keyPassword'] : System.getenv('ANDROID_KEY_PASSWORD')
+def hasSigningConfig = ksStorePath && ksStorePassword && ksKeyAlias && ksKeyPassword
+
+android {
+    namespace "com.ffmaxarena.app"
+    compileSdk rootProject.ext.compileSdkVersion
+    defaultConfig {
+        applicationId "com.ffmaxarena.app"
+        minSdkVersion rootProject.ext.minSdkVersion
+        targetSdkVersion rootProject.ext.targetSdkVersion
+        versionCode 1
+        versionName "1.0"
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        aaptOptions {
+             // Files and dirs to omit from the packaged assets dir, modified to
+             // include *.js, since that will not compile within Ant which
+             // is used to build the CLI
+             ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
+        }
+    }
+    signingConfigs {
+        release {
+            if (hasSigningConfig) {
+                storeFile file(ksStorePath)
+                storePassword ksStorePassword
+                keyAlias ksKeyAlias
+                keyPassword ksKeyPassword
+            }
+        }
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            // Falls back to no signing config if no keystore was
+            // supplied — the build still succeeds (produces an
+            // unsigned APK) rather than failing outright, so CI runs
+            // without secrets configured yet still surface real
+            // compile errors instead of a signing error masking them.
+            if (hasSigningConfig) {
+                signingConfig signingConfigs.release
+            }
+        }
+    }
+    packagingOptions {
+        resources {
+            excludes += ['META-INF/DEPENDENCIES']
+        }
+    }
+}
+
+repositories {
+    flatDir{
+        dirs '../capacitor-cordova-android-plugins/src/main/libs', 'libs'
+    }
+}
+
+dependencies {
+    implementation fileTree(include: ['*.jar'], dir: 'libs')
+    implementation "androidx.appcompat:appcompat:$androidxAppCompatVersion"
+    implementation "androidx.coordinatorlayout:coordinatorlayout:$androidxCoordinatorLayoutVersion"
+    implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
+    implementation project(':capacitor-android')
+    testImplementation "junit:junit:$junitVersion"
+    androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
+    androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
+    implementation project(':capacitor-splash-screen')
+}
+
+apply from: 'capacitor.build.gradle'
+
+try {
+    def servicesJSON = file('google-services.json')
+    if (servicesJSON.text) {
+        apply plugin: 'com.google.gms.google-services'
+    }
+} catch(Exception e) {
+    logger.info("google-services.json not found — not applying the Google Services plugin. " +
+        "This project uses the Firebase Web SDK, not the native Android SDK, so this is expected " +
+        "and does not need to be added.")
+}

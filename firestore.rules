@@ -1,0 +1,184 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // True if the currently authenticated user's own profile doc has
+    // role == "admin". This is the Cloud-Functions-free way to do
+    // role checks — see README for the custom-claims upgrade path.
+    function isAdmin() {
+      return request.auth != null &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    function isOwner(uid) {
+      return request.auth != null && request.auth.uid == uid;
+    }
+
+    // --- users/{uid} ---
+    match /users/{uid} {
+      allow read: if isOwner(uid) || isAdmin();
+      // Signup creates its own doc, always as "player" — clients can
+      // never self-assign the admin role.
+      allow create: if isOwner(uid) && request.resource.data.role == 'player';
+      // Owners can only ever touch their own display fields directly.
+      // Every other field on this doc (role, blocked, referralCode,
+      // referredBy, referralRewardClaimed, totalReferred,
+      // totalReferralEarnings, tournamentsJoined, fcmToken) is written
+      // exclusively by Cloud Functions via the Admin SDK, which is
+      // what makes referral/reward validation trustworthy — an
+      // allowlist here is safer than trying to deny-list every one of
+      // those fields individually.
+      allow update: if isAdmin() ||
+        (isOwner(uid) &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['photoURL', 'displayName', 'fcmToken']));
+      allow delete: if isAdmin();
+
+      // --- users/{uid}/notifications/{notificationId} ---
+      match /notifications/{notificationId} {
+        allow read: if isOwner(uid) || isAdmin();
+        // Owners may only toggle "read" on their own notifications;
+        // authoring new notifications is an admin/backend action.
+        allow update: if isOwner(uid) &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
+        allow create, delete: if isAdmin();
+      }
+      // --- users/{uid}/matchHistory/{matchId} ---
+      match /matchHistory/{matchId} {
+        allow read: if isOwner(uid) || isAdmin();
+        allow write: if false;
+      }
+
+      // --- users/{uid}/winnerHistory/{winId} ---
+      match /winnerHistory/{winId} {
+        allow read: if isOwner(uid) || isAdmin();
+        allow write: if false;
+      }
+    }
+
+    // --- leaderboard/{uid} ---
+    // Aggregate stats, readable by any signed-in player (that's the
+    // point of a leaderboard); written only by a future backend
+    // process, never by clients.
+    match /leaderboard/{uid} {
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
+
+    // --- tournaments/{tournamentId} ---
+    match /tournaments/{tournamentId} {
+      allow read: if request.auth != null;
+      allow create, update, delete: if isAdmin();
+
+      // --- tournaments/{tournamentId}/participants/{uid} ---
+      // Written only by Cloud Functions (approvePayment,
+      // joinTournamentWithWallet, leaveTournament) via the Admin SDK —
+      // this is what makes duplicate-join prevention and slot counts
+      // trustworthy. Clients can only read.
+      match /participants/{participantUid} {
+        allow read: if isOwner(participantUid) || isAdmin();
+        allow write: if false;
+      }
+    }
+
+    // --- wallets/{uid} ---
+    // Deliberately locked down: wallet crediting/debiting logic lives
+    // only in Cloud Functions (Phase 6B), which use the Admin SDK and
+    // bypass these rules entirely. Clients can only create their own
+    // zero-balance seed doc on signup — no client-side balance updates.
+    match /wallets/{uid} {
+      allow read: if isOwner(uid) || isAdmin();
+      allow create: if isOwner(uid) && request.resource.data.balance == 0;
+      allow update, delete: if false;
+
+      // --- wallets/{uid}/transactions/{transactionId} ---
+      // The immutable ledger. Only ever written by Cloud Functions
+      // (approvePayment, approveWithdrawal, creditPrize, resetWallet,
+      // joinTournamentWithWallet, leaveTournament) via the Admin SDK —
+      // clients (including admins) can read but never write here.
+      match /transactions/{transactionId} {
+        allow read: if isOwner(uid) || isAdmin();
+        allow write: if false;
+      }
+    }
+
+    // --- payments/{paymentId} ---
+    // Filing a request is a client action; approving/rejecting one
+    // is NOT — that only happens through approvePayment/rejectPayment
+    // (Cloud Functions, Admin SDK), which is why update is locked to
+    // `false` here even for admins. A direct client write to "approved"
+    // would mark the request done without ever crediting the wallet or
+    // reserving the tournament slot, since that logic lives only in
+    // the Cloud Function's atomic transaction.
+    match /payments/{paymentId} {
+      allow read: if isAdmin() || (request.auth != null && resource.data.uid == request.auth.uid);
+      allow create: if request.auth != null &&
+        request.resource.data.uid == request.auth.uid &&
+        request.resource.data.status == 'pending';
+      allow update: if false;
+      allow delete: if isAdmin();
+    }
+
+    // --- referralCodes/{code} ---
+    // A pure internal lookup table (code -> referrer uid) used only by
+    // the redeemReferralCode Cloud Function via the Admin SDK. No
+    // client ever needs to read or write this directly.
+    match /referralCodes/{code} {
+      allow read, write: if false;
+    }
+
+    // --- referrals/{referrerUid}/referred/{referredUid} ---
+    // Written only by redeemReferralCode (on redemption) and
+    // approvePayment (when the bonus is credited) — both Cloud
+    // Functions via the Admin SDK. The referrer can read their own
+    // referral history; the referred user has no reason to see it.
+    match /referrals/{referrerUid}/referred/{referredUid} {
+      allow read: if isOwner(referrerUid) || isAdmin();
+      allow write: if false;
+    }
+
+    // --- dailyRewards/{uid} ---
+    // Streak + last-claimed-at is only ever written by the
+    // claimDailyReward Cloud Function (Admin SDK), which is what makes
+    // "one claim per day" and the consecutive-streak count trustworthy.
+    match /dailyRewards/{uid} {
+      allow read: if isOwner(uid) || isAdmin();
+      allow write: if false;
+    }
+
+    // --- supportTickets/{ticketId} ---
+    // A player can file their own ticket and read it (to see the
+    // admin's reply); only an admin can update it (reply/close).
+    match /supportTickets/{ticketId} {
+      allow read: if isAdmin() || (request.auth != null && resource.data.uid == request.auth.uid);
+      allow create: if request.auth != null &&
+        request.resource.data.uid == request.auth.uid &&
+        request.resource.data.status == 'open';
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // --- faq/{id} & rules/{id} ---
+    // Read by any signed-in player; managed only by admins (mirrors
+    // the Admin FAQ/Rules Management panels).
+    match /faq/{id} {
+      allow read: if request.auth != null;
+      allow create, update, delete: if isAdmin();
+    }
+    match /rules/{id} {
+      allow read: if request.auth != null;
+      allow create, update, delete: if isAdmin();
+    }
+
+    // --- withdrawals/{withdrawalId} ---
+    // Same reasoning as payments/{paymentId} above.
+    match /withdrawals/{withdrawalId} {
+      allow read: if isAdmin() || (request.auth != null && resource.data.uid == request.auth.uid);
+      allow create: if request.auth != null &&
+        request.resource.data.uid == request.auth.uid &&
+        request.resource.data.status == 'pending';
+      allow update: if false;
+      allow delete: if isAdmin();
+    }
+  }
+}
