@@ -1,20 +1,20 @@
 {
-  "appId": "com.ffmaxarena.app",
-  "appName": "FF MAX ARENA",
-  "webDir": "dist",
-  "server": {
-    "androidScheme": "https"
-  },
-  "android": {
-    "allowMixedContent": false
-  },
-  "plugins": {
-    "SplashScreen": {
-      "launchShowDuration": 1500,
-      "backgroundColor": "#0A0D12",
-      "androidSplashResourceName": "splash",
-      "androidScaleType": "CENTER_CROP",
-      "showSpinner": false
-    }
-  }
+	"appId": "com.ffmaxarena.app",
+	"appName": "FF MAX ARENA",
+	"webDir": "dist",
+	"server": {
+		"androidScheme": "https"
+	},
+	"android": {
+		"allowMixedContent": false
+	},
+	"plugins": {
+		"SplashScreen": {
+			"launchShowDuration": 1500,
+			"backgroundColor": "#0A0D12",
+			"androidSplashResourceName": "splash",
+			"androidScaleType": "CENTER_CROP",
+			"showSpinner": false
+		}
+	}
 }

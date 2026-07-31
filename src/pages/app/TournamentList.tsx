@@ -32,7 +32,7 @@ export default function TournamentList() {
           t.map.toLowerCase().includes(query);
         return typeMatch && modeMatch && statusMatch && searchMatch;
       })
-      .sort((a, b) => (a.status === "live" ? -1 : 1));
+      .sort((a) => (a.status === "live" ? -1 : 1));
   }, [tournaments, search, type, mode, status]);
 
   return (
