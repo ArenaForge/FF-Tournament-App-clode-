@@ -1,15 +1,12 @@
-name: Android Release Build
+name: Android Debug Build
 
-# Run manually from the Actions tab, or by pushing a tag like "v1.0.0".
 on:
-  workflow_dispatch: {}
-  push:
-    tags:
-      - "v*"
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -20,21 +17,18 @@ jobs:
           node-version: 20
           cache: npm
 
-      - name: Set up JDK 17
+      - name: Set up Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "17"
 
-      - name: Install web app dependencies
+      - name: Install dependencies
         run: npm install
 
-      - name: Build the web app (dist/)
+      - name: Build web app
         run: npm run build
         env:
-          # Provide your real Firebase project values as GitHub Actions
-          # secrets (Settings > Secrets and variables > Actions) —
-          # never commit a real .env file.
           VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
           VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
           VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
@@ -43,38 +37,19 @@ jobs:
           VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
           VITE_FIREBASE_VAPID_KEY: ${{ secrets.VITE_FIREBASE_VAPID_KEY }}
 
-      - name: Sync Capacitor (copies dist/ + native plugins into android/)
+      - name: Sync Capacitor
         run: npx cap sync android
 
-      - name: Regenerate the Gradle wrapper jar
-        # This sandbox's prepared project has every wrapper file except
-        # the compiled gradle-wrapper.jar itself (a binary that can't be
-        # hand-authored responsibly). The runner has real network + a
-        # real Gradle install, so this one-line step produces the
-        # genuine, official jar before the build below uses it.
-        run: gradle wrapper --gradle-version 8.9
-        working-directory: android
-
-      - name: Grant execute permission to gradlew
+      - name: Grant execute permission
         run: chmod +x gradlew
         working-directory: android
 
-      - name: Decode signing keystore
-        if: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
-        run: echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > ff-max-arena-upload.keystore
-
-      - name: Build signed release APK
+      - name: Build Debug APK
         working-directory: android
-        run: ./gradlew assembleRelease
-        env:
-          ANDROID_KEYSTORE_PATH: ../ff-max-arena-upload.keystore
-          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: ./gradlew assembleDebug
 
-      - name: Upload APK artifact
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: ff-max-arena-release-apk
-          path: android/app/build/outputs/apk/release/app-release.apk
-          if-no-files-found: error
+          name: ff-max-arena-debug-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
