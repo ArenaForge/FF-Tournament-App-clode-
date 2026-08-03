@@ -45,11 +45,11 @@ jobs:
 
       - name: Generate Gradle Wrapper
         working-directory: android
-        run: gradle wrapper --gradle-version 8.7
+        run: gradle wrapper --gradle-version 8.7 --stacktrace
 
       - name: Grant execute permission
-        run: chmod +x gradlew
         working-directory: android
+        run: chmod +x gradlew
 
       - name: Decode signing keystore
         run: echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > ff-max-arena-upload.keystore
