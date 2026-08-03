@@ -23,6 +23,9 @@ jobs:
           distribution: temurin
           java-version: "17"
 
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
       - name: Install dependencies
         run: npm install
 
@@ -40,19 +43,13 @@ jobs:
       - name: Sync Capacitor
         run: npx cap sync android
 
-      - name: Install Gradle
-        run: sudo apt-get update && sudo apt-get install -y gradle
-
-      - name: Generate Gradle Wrapper
-        working-directory: android
-        run: gradle wrapper --gradle-version 8.7 --stacktrace
-
       - name: Grant execute permission
         working-directory: android
         run: chmod +x gradlew
 
       - name: Decode signing keystore
-        run: echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > ff-max-arena-upload.keystore
+        run: |
+          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > ff-max-arena-upload.keystore
 
       - name: Build signed release APK
         working-directory: android
