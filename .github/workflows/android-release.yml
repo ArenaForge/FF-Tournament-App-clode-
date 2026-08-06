@@ -55,8 +55,12 @@ jobs:
         working-directory: android
         run: ./gradlew assembleRelease
 
+      - name: List APK files
+        working-directory: android
+        run: find . -name "*.apk"
+
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: ff-max-arena-release-apk
-          path: android/app/build/outputs/apk/release/app-release.apk
+          path: android/**/*.apk
