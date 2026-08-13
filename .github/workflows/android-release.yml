@@ -47,9 +47,24 @@ jobs:
         working-directory: android
         run: chmod +x gradlew
 
-      - name: Decode signing keystore
+
+      - name: Generate signing keystore
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
-          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > ff-max-arena-upload.keystore
+          keytool -genkeypair \
+            -v \
+            -keystore ff-max-arena-upload.keystore \
+            -storetype PKCS12 \
+            -alias "$ANDROID_KEY_ALIAS" \
+            -storepass "$ANDROID_KEYSTORE_PASSWORD" \
+            -keypass "$ANDROID_KEY_PASSWORD" \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 10000 \
+            -dname "CN=FF MAX ARENA, OU=ArenaForge, O=ArenaForge, L=India, ST=MP, C=IN"
 
       - name: Build signed release APK
         env:
@@ -62,7 +77,7 @@ jobs:
 
       - name: List APK files
         working-directory: android
-        run: find . -name "*.apk"
+        run: find . -name "*.apk" -type f -print
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
