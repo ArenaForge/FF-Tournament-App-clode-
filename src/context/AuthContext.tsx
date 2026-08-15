@@ -13,7 +13,10 @@ import {
   resetPasswordEmail,
   logoutUser,
 } from "@/services/authService";
-import { createUserProfile, subscribeToUserProfile } from "@/services/usersService";
+import {
+  createUserProfile,
+  subscribeToUserProfile,
+} from "@/services/usersService";
 import { ensureWalletDoc } from "@/services/walletsService";
 import type { UserRole } from "@/types/firestore";
 
@@ -44,29 +47,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, (firebaseUser) => {
+      console.log("[Admin Debug] Auth user:", firebaseUser?.uid);
+      console.log("[Admin Debug] Auth email:", firebaseUser?.email);
+
       setUser(firebaseUser);
       setInitializing(false);
     });
+
     return unsubscribeAuth;
   }, []);
 
   // Real-time role/blocked detection from the user's Firestore profile.
-  // Defaults to "player" if the profile hasn't loaded yet or Firestore
-  // is unreachable, so the app degrades to the safer, lower-privilege
-  // state rather than silently granting admin access.
   useEffect(() => {
     if (!user) {
+      console.log("[Admin Debug] No authenticated user");
       setRole(null);
       setBlocked(false);
       setRoleLoading(false);
       return;
     }
+
     setRoleLoading(true);
+
+    console.log("[Admin Debug] Reading Firestore profile for UID:", user.uid);
+
     const unsubscribeProfile = subscribeToUserProfile(user.uid, (profile) => {
+      console.log("[Admin Debug] Firestore profile:", profile);
+      console.log("[Admin Debug] Firestore role:", profile?.role);
+      console.log("[Admin Debug] Firestore blocked:", profile?.blocked);
+
       setRole(profile?.role ?? "player");
       setBlocked(profile?.blocked ?? false);
       setRoleLoading(false);
     });
+
     return unsubscribeProfile;
   }, [user]);
 
@@ -76,8 +90,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function signup(displayName: string, email: string, password: string) {
     const firebaseUser = await signupWithEmail(displayName, email, password);
-    // Seed the Firestore profile + wallet doc. This is infrastructure
-    // only — no deposit/withdraw logic lives here (see WalletContext).
+
     await createUserProfile({
       uid: firebaseUser.uid,
       email: firebaseUser.email,
@@ -87,6 +100,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       blocked: false,
       createdAt: new Date().toISOString(),
     });
+
     await ensureWalletDoc(firebaseUser.uid);
   }
 
@@ -115,6 +129,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 export function useAuth() {
   const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error("useAuth must be used within an AuthProvider");
+
+  if (!ctx) {
+    throw new Error("useAuth must be used within an AuthProvider");
+  }
+
   return ctx;
 }
