@@ -37,6 +37,8 @@ const BASE_MENU_ITEMS = [
 export default function Profile() {
   const navigate = useNavigate();
   const { user, role, logout } = useAuth();
+  console.log("[Admin Debug] Profile role:", role);
+  console.log("[Admin Debug] Profile UID:", user?.uid);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
 
