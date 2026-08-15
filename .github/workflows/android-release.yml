@@ -47,7 +47,6 @@ jobs:
         working-directory: android
         run: chmod +x gradlew
 
-
       - name: Generate signing keystore
         env:
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
