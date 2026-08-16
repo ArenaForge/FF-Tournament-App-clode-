@@ -27,7 +27,10 @@ export async function setDocument<T extends DocumentData>(
   await setDoc(doc(db, path), data, { merge });
 }
 
-export async function updateDocument(path: string, data: Partial<DocumentData>): Promise<void> {
+export async function updateDocument(
+  path: string,
+  data: Partial<DocumentData>
+): Promise<void> {
   await updateDoc(doc(db, path), data);
 }
 
@@ -41,7 +44,11 @@ export async function getCollection<T>(
 ): Promise<(T & { id: string })[]> {
   const q = query(collection(db, collectionPath), ...constraints);
   const snap = await getDocs(q);
-  return snap.docs.map((d) => ({ id: d.id, ...(d.data() as T) }));
+
+  return snap.docs.map((d) => ({
+    id: d.id,
+    ...(d.data() as T),
+  }));
 }
 
 export function subscribeToCollection<T>(
@@ -50,12 +57,22 @@ export function subscribeToCollection<T>(
   constraints: QueryConstraint[] = []
 ): Unsubscribe {
   const q = query(collection(db, collectionPath), ...constraints);
+
   return onSnapshot(
     q,
-    (snap) => callback(snap.docs.map((d) => ({ id: d.id, ...(d.data() as T) }))),
+    (snap) => {
+      callback(
+        snap.docs.map((d) => ({
+          id: d.id,
+          ...(d.data() as T),
+        }))
+      );
+    },
     (error) => {
-      // eslint-disable-next-line no-console
-      console.warn(`[Firestore] Subscription error on ${collectionPath}:`, error);
+      console.error(
+        `[Firestore Debug] Collection error on ${collectionPath}:`,
+        error
+      );
     }
   );
 }
@@ -66,10 +83,18 @@ export function subscribeToDocument<T>(
 ): Unsubscribe {
   return onSnapshot(
     doc(db, path),
-    (snap) => callback(snap.exists() ? (snap.data() as T) : null),
+    (snap) => {
+      console.log("[Firestore Debug] Path:", path);
+      console.log("[Firestore Debug] Exists:", snap.exists());
+      console.log("[Firestore Debug] Data:", snap.data());
+
+      callback(snap.exists() ? (snap.data() as T) : null);
+    },
     (error) => {
-      // eslint-disable-next-line no-console
-      console.warn(`[Firestore] Subscription error on ${path}:`, error);
+      console.error("[Firestore Debug] ERROR:", error);
+      console.error("[Firestore Debug] Path:", path);
     }
   );
 }
+
+
