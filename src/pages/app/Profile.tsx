@@ -116,6 +116,7 @@ export default function Profile() {
         <StatPill label="K/D" value={MOCK_PROFILE.kdRatio} />
       </GlassCard>
 
+      <p className="text-xs text-orange font-mono mb-2">DEBUG ROLE: {role ?? "null"}</p>
       <SectionHeader title="More" />
       <GlassCard padded={false} className="mb-6 divide-y divide-white/10 overflow-hidden">
         {menuItems.map(({ label, icon: Icon, to }) => (
