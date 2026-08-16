@@ -15,8 +15,19 @@ import {
 import { db } from "@/firebase/config";
 
 export async function getDocument<T>(path: string): Promise<T | null> {
-  const snap = await getDoc(doc(db, path));
-  return snap.exists() ? (snap.data() as T) : null;
+  try {
+    const snap = await getDoc(doc(db, path));
+
+    console.log("[Firestore Debug] getDocument Path:", path);
+    console.log("[Firestore Debug] getDocument Exists:", snap.exists());
+    console.log("[Firestore Debug] getDocument Data:", snap.data());
+
+    return snap.exists() ? (snap.data() as T) : null;
+  } catch (error) {
+    console.error("[Firestore Debug] getDocument ERROR:", error);
+    console.error("[Firestore Debug] getDocument Path:", path);
+    return null;
+  }
 }
 
 export async function setDocument<T extends DocumentData>(
@@ -61,6 +72,13 @@ export function subscribeToCollection<T>(
   return onSnapshot(
     q,
     (snap) => {
+      console.log(
+        "[Firestore Debug] Collection:",
+        collectionPath,
+        "Docs:",
+        snap.size
+      );
+
       callback(
         snap.docs.map((d) => ({
           id: d.id,
@@ -81,6 +99,8 @@ export function subscribeToDocument<T>(
   path: string,
   callback: (data: T | null) => void
 ): Unsubscribe {
+  console.log("[Firestore Debug] Starting document listener:", path);
+
   return onSnapshot(
     doc(db, path),
     (snap) => {
@@ -88,13 +108,24 @@ export function subscribeToDocument<T>(
       console.log("[Firestore Debug] Exists:", snap.exists());
       console.log("[Firestore Debug] Data:", snap.data());
 
-      callback(snap.exists() ? (snap.data() as T) : null);
+      if (snap.exists()) {
+        callback(snap.data() as T);
+      } else {
+        console.warn(
+          "[Firestore Debug] Document does NOT exist:",
+          path
+        );
+        callback(null);
+      }
     },
     (error) => {
       console.error("[Firestore Debug] ERROR:", error);
+      console.error("[Firestore Debug] ERROR CODE:", error.code);
+      console.error("[Firestore Debug] ERROR MESSAGE:", error.message);
       console.error("[Firestore Debug] Path:", path);
+
+      // Important: stop roleLoading instead of leaving it hanging.
+      callback(null);
     }
   );
 }
-
-
