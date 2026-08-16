@@ -29,6 +29,17 @@ jobs:
       - name: Install dependencies
         run: npm install
 
+      - name: Verify Firebase project
+        run: |
+          if [ "$VITE_FIREBASE_PROJECT_ID" = "ff-max-arena-3d4df" ]; then
+            echo "Firebase project: MATCH"
+          else
+            echo "Firebase project: MISMATCH"
+            exit 1
+          fi
+        env:
+          VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
+
       - name: Build web app
         run: npm run build
         env:
