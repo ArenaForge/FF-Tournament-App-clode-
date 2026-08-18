@@ -57,7 +57,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return unsubscribeAuth;
   }, []);
 
-  // Real-time role/blocked detection from the user's Firestore profile.
   useEffect(() => {
     if (!user) {
       console.log("[Admin Debug] No authenticated user");
@@ -69,17 +68,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     setRoleLoading(true);
 
-    console.log("[Admin Debug] Reading Firestore profile for UID:", user.uid);
+    console.log(
+      "[Admin Debug] Reading Firestore profile for UID:",
+      user.uid
+    );
 
-    const unsubscribeProfile = subscribeToUserProfile(user.uid, (profile) => {
-      console.log("[Admin Debug] Firestore profile:", profile);
-      console.log("[Admin Debug] Firestore role:", profile?.role);
-      console.log("[Admin Debug] Firestore blocked:", profile?.blocked);
+    console.log(
+      "[Admin Debug] Expected Firestore path:",
+      `users/${user.uid}`
+    );
 
-      setRole(profile?.role ?? null);
-      setBlocked(profile?.blocked ?? false);
-      setRoleLoading(false);
-    });
+    const unsubscribeProfile = subscribeToUserProfile(
+      user.uid,
+      (profile) => {
+        console.log("[Admin Debug] Firestore profile:", profile);
+        console.log("[Admin Debug] PROFILE NULL:", profile === null);
+        console.log(
+          "[Admin Debug] EXPECTED PATH:",
+          `users/${user.uid}`
+        );
+        console.log("[Admin Debug] EXPECTED UID:", user.uid);
+        console.log("[Admin Debug] Firestore role:", profile?.role);
+        console.log("[Admin Debug] Firestore blocked:", profile?.blocked);
+
+        if (profile === null) {
+          console.error(
+            "[Admin Debug] PROFILE NULL - Firestore profile not received"
+          );
+        } else {
+          console.log("[Admin Debug] PROFILE FOUND");
+        }
+
+        setRole(profile?.role ?? null);
+        setBlocked(profile?.blocked ?? false);
+        setRoleLoading(false);
+      }
+    );
 
     return unsubscribeProfile;
   }, [user]);
@@ -88,8 +112,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await loginWithEmail(email, password);
   }
 
-  async function signup(displayName: string, email: string, password: string) {
-    const firebaseUser = await signupWithEmail(displayName, email, password);
+  async function signup(
+    displayName: string,
+    email: string,
+    password: string
+  ) {
+    const firebaseUser = await signupWithEmail(
+      displayName,
+      email,
+      password
+    );
 
     await createUserProfile({
       uid: firebaseUser.uid,
@@ -124,7 +156,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     logout,
   };
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={value}>
+      {children}
+    </AuthContext.Provider>
+  );
 }
 
 export function useAuth() {
