@@ -76,7 +76,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.log("[Admin Debug] Firestore role:", profile?.role);
       console.log("[Admin Debug] Firestore blocked:", profile?.blocked);
 
-      setRole(profile?.role ?? "player");
+      setRole(profile?.role ?? null);
       setBlocked(profile?.blocked ?? false);
       setRoleLoading(false);
     });
